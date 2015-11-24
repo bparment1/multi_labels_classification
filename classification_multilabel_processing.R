@@ -1,20 +1,113 @@
+####################################  Multilabel and fuzzy classification  #######################################
+###########################################  Processing and Analyses  #######################################
+#This script explores the fuzzy and multilabels concepts using classified land cover maps.
+
+#AUTHORS: Hichem Omrani and Benoit Parmentier                                             
+#DATE CREATED: 11/03/2015 
+#DATE MODIFIED: 11/24/2015
+#Version: 1
+#PROJECT: Multilabel and fuzzy experiment            
+
+#
+#COMMENTS: -  
+#          - 
+#TO DO:
+# - 
+# - 
+# - 
+#
+#################################################################################################
+
+###Loading R library and packages                                                      
+
+library(raster)                 # loading the raster package
+library(gtools)                 # loading R helper programming tools/functions
+library(sp)                     # spatial objects in R
+library(gplots)                 # plotting functions such as plotCI
+library(rgdal)                  # gdal driver for R
+library(RColorBrewer)           # color scheme, palettes used for plotting
+library(gdata)                  # read different format (including .xlsx)
+library(plotrix)                # plot options and functions 
+library(rasterVis)              # raster visualization
+library(colorRamps)             # contains matlab.like palette
+library(zoo)                    # time series objects and methods
+library(maptools)               #
+library(rgeos)                  # spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+
+###### Functions used in this script sourced from other files
+
+#function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_function_11242015.R" #PARAM 1
+#script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
+#source(file.path(script_path,function_rainfall_time_series_NEST_analyses)) #source all functions used in this script 1.
+
+##### Functions used in this script 
+
+create_dir_fun <- function(outDir,out_suffix){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    outDir <- file.path(outDir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(outDir)){
+    dir.create(outDir)
+  }
+  return(outDir)
+}
+
+#Used to load RData object saved within the functions produced.
+load_obj <- function(f){
+  env <- new.env()
+  nm <- load(f, env)[1]
+  env[[nm]]
+}
+
+#####  Parameters and argument set up ###########
+
+in_dir <- "/home/bparmentier/Google Drive/LISER_Lux/Hichem" #local bpy50
+#in_dir <- "//crc/profiles/RedirectFolders/hichem/Desktop/LISER/papers/Fuzzy CA/raster-USA/Hichem"#LISER
+CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
+CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
+proj_str<- CRS_WGS84 
+CRS_reg <- CRS_WGS84 # PARAM 4
+
+file_format <- ".rst" #PARAM5
+NA_value <- -9999 #PARAM6
+NA_flag_val <- NA_value #PARAM7
+out_suffix <-"NEST_prism_11192015" #output suffix for the files and ouptu folder #PARAM 8
+create_out_dir_param=TRUE #PARAM9
+num_cores <- 11 #PARAM 14
+
+################# START SCRIPT ###############################
+
+### PART I READ AND PREPARE DATA FOR REGRESSIONS #######
+#set up the working directory
+#Create output directory
+
+out_dir <- in_dir #output will be created in the input dir
+out_suffix_s <- out_suffix #can modify name of output suffix
+if(create_out_dir_param==TRUE){
+  out_dir <- create_dir_fun(out_dir,out_suffix_s)
+  setwd(out_dir)
+}else{
+  setwd(out_dir) #use previoulsy defined directory
+}
+
 
 ##########################
 # Reading data from landuse layers
 ##########################
 
-setwd("//crc/profiles/RedirectFolders/hichem/Desktop/LISER/papers/Fuzzy CA/raster-USA/Hichem")  
-
-library(sp)
-library(raster)
-
-LU1978 = "landusebase.asc"
-LU1998 = "landusefinal.asc"
+LU1978 <- file.path(in_dir,"landusebase.asc")
+LU1998 <- file.path(in_dir, "landusefinal.asc")
 
 ##################### begin 
 #########################################################################################################
 raster1978 <- raster(LU1978) 
 raster1998 <- raster(LU1998) 
+
+plot(raster1978)
+plot(raster1998)
 
 data_matrix1978 <- rasterToPoints(raster1978)
 head(data_matrix1978)
@@ -24,20 +117,32 @@ head(data_matrix1998)
 
 r.agg_78 <- aggregate(raster1978, fact=5, fun=sum, na.rm=TRUE) # 10
 
-r.agg_98 <- aggregate(raster1998, fact=5, fun=sum, na.rm=TRUE)
+r.agg_98 <- aggregate(raster1998, fact=5, fun=sum, na.rm=TRUE) #so if 25 then 100% urban, 
+#could use mean!!
+r_agg_98_perc <- aggregate(raster1998, fact=5, fun=mean, na.rm=TRUE)*100 #so 100% urban, 
 
-data.agg_78 <- rasterToPoints(r.agg_78)
+plot(r.agg_78)
+plot(r.agg_98)
+histogram(r.agg_98)
+histogram(raster1998)
+
+data.agg_78 <- rasterToPoints(r.agg_78) #? not sure why we are doing this right now
 head(data.agg_78)
 
-data.agg_98 <- rasterToPoints(r.agg_98)
+data.agg_98 <- rasterToPoints(r.agg_98) #this is matrix...
 head(data.agg_98)
+colnames(data.agg_78) #need comments!
 
 r78 = data.agg_78;
 r98 = data.agg_98;
 
+### Reclassify data, column 3 is the landuse final
+#if 25 then all the pixels are of hte same class other not (ML)
+#this should be done directly in the raster package classify function
+
 for (i in 1:nrow(data.agg_78)){
 if ( (data.agg_78[i,3]!=0) && (data.agg_78[i,3]!=25) ) # ML 
-r78[i,3] = 2
+r78[i,3] = 2 # it means mixed class ok
 }
 
 for (i in 1:nrow(data.agg_98)){
@@ -45,6 +150,7 @@ if ( (data.agg_98[i,3]!=0) && (data.agg_98[i,3]!=25) ) # ML
 r98[i,3] = 2
 }
 
+## if col 3 is 25 then urban ok
 for (i in 1:nrow(r78)){
 if (r78[i,3]==25) # Urban 
 r78[i,3] = 1
@@ -55,9 +161,14 @@ if (r98[i,3]==25) # Urban
 r98[i,3] = 1
 }
 
+### Bring it back to the raster format (use reclassify for all)
 rt1 <- rasterFromXYZ(r78)
 rt2 <- rasterFromXYZ(r98)
 
+#Add legend
+plot(rt1)
+
+histogram(rt1)
 writeRaster(rt1, "agg78_500meter.asc", overwrite=TRUE)
 writeRaster(rt2, "agg98_500meter.asc", overwrite=TRUE)
 
@@ -330,3 +441,4 @@ colnames(LU_USA_multi_label) = c("x", "y", "classNU", "classU", "Class_NU_78", "
 
 write(LU_USA_multi_label, file = "LU_USA_multi_label123.csv", sep = ",") 
 
+############################### END OF SCRIPT ########################
