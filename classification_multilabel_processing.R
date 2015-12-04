@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 11/24/2015
+#DATE MODIFIED: 12/04/2015
 #Version: 1
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -103,7 +103,7 @@ LU1998 <- file.path(in_dir, "landusefinal.asc")
 
 ##################### begin 
 #########################################################################################################
-raster1978 <- raster(LU1978) 
+raster1978 <- raster(LU1978) #There is no coordinate system!!!!
 raster1998 <- raster(LU1998) 
 
 plot(raster1978)
@@ -133,7 +133,7 @@ data.agg_98 <- rasterToPoints(r.agg_98) #this is matrix...
 head(data.agg_98)
 colnames(data.agg_78) #need comments!
 
-r78 = data.agg_78;
+r78 = data.agg_78; #make a copy?
 r98 = data.agg_98;
 
 ### Reclassify data, column 3 is the landuse final
@@ -156,6 +156,7 @@ if (r78[i,3]==25) # Urban
 r78[i,3] = 1
 }
 
+#reclassify pixel to urban if 25 for year 98
 for (i in 1:nrow(r98)){
 if (r98[i,3]==25) # Urban 
 r98[i,3] = 1
@@ -169,17 +170,23 @@ rt2 <- rasterFromXYZ(r98)
 plot(rt1)
 
 histogram(rt1)
-writeRaster(rt1, "agg78_500meter.asc", overwrite=TRUE)
-writeRaster(rt2, "agg98_500meter.asc", overwrite=TRUE)
+writeRaster(rt1, "agg78_500meter.asc", overwrite=TRUE) #better not use asc !!! not standard file 
+writeRaster(rt2, "agg98_500meter.asc", overwrite=TRUE) #note that the coordinate system is not assigned!!!
 
-LU = cbind(r78, r98[,3]) # NU(0), U(2), ML(2)
-colnames(LU) = c("X", "Y", "LU78", "class") # class refer to LU98
-LU[1:5,]
+LU = cbind(r78, r98[,3]) # NU(0), U(2), ML(2), recreate a matrix object, use data.frame instead...
+colnames(LU) = c("X", "Y", "LU78", "class") # class refer to LU98, maybe use year instead of class?
+#LU[1:5,]
+head(LU)
 
 #### GENERATE ML land use DATA
 
 data_matrix = cbind(data_matrix1978, data_matrix1998[,3])
 agg_matrix = cbind(data.agg_78, data.agg_98[,3])
+
+head(data_matrix)
+head(agg_matrix)
+dim(data_matrix)
+dim(data_matrix1978)
 
 ### for the year 1978
 data.agg_78_NOT_ML_equal4 = data.agg_78[data.agg_78[,3]== 0,]  
