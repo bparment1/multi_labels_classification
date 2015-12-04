@@ -114,6 +114,15 @@ head(data_matrix1978)
 
 data_matrix1998 <- rasterToPoints(raster1998)
 head(data_matrix1998)
+hist(raster1978)
+hist(raster1998)
+freq(raster1998)
+freq(raster1998)# 
+#> freq(raster1998)
+#value  count
+#[1,]     0 114999
+#[2,]     1  21621 #urban
+#[3,]    NA  78260
 
 r.agg_78 <- aggregate(raster1978, fact=5, fun=sum, na.rm=TRUE) # 10
 
@@ -188,6 +197,11 @@ head(agg_matrix)
 dim(data_matrix)
 dim(data_matrix1978)
 
+table(data_matrix[,3])
+#0      1 
+#117012  19608 
+
+##### Use reclassifying function
 ### for the year 1978
 data.agg_78_NOT_ML_equal4 = data.agg_78[data.agg_78[,3]== 0,]  
 data.agg_78_NOT_ML_equal4[,3]=0
@@ -243,6 +257,7 @@ colorCH_ML = c("white", "black", "darkgreen")
 
 # pdf("maps_USA.pdf")
 
+#dat_mat is a matrix!! use standard raster...
 par(mfrow=c(2,3)) #, mar=c(2,2,1,1), mgp=c(3,1,0)*0.7, lab=c(3,3,1))
 
 plot(data_mat[,1], data_mat[,2], col=color[data_mat[,3]], cex=0.1, xlab="", ylab="", main = "Landuse base in 1978")
@@ -297,7 +312,8 @@ dt1_NU = data.agg_78[data.agg_78[,3]==0,]
 dt1_U = data.agg_78[data.agg_78[,3]==25,]
 
 dt2ML = data.agg_98[(data.agg_98[,3]!=0) & (data.agg_98[,3]!=25),]
-dt2_NU = data.agg_98[data.agg_98[,3]==0,]
+dt2_NU = data.     0      1 
+117012  19608 agg_98[data.agg_98[,3]==0,]
 dt2_U = data.agg_98[data.agg_98[,3]==25,]
 
 dt1_U[,3]=2
