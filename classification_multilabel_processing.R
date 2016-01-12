@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 12/04/2015
+#DATE MODIFIED: 01/12/2016
 #Version: 1
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -17,7 +17,21 @@
 # - 
 #
 #################################################################################################
+#what we need is clear step of what we are doing here..
 
+#PART 1: Generate multi-label data from fine resolution
+#0)Break out layers into individual categories: e.g. 3 cat : 1,2,3
+#1)Aggregate data at coarser resolution for each categories
+#2)Reclassify pixels into multi and mono labels based on proportions:
+#  
+#3)Repeat for date2
+#PART 2: Modeling
+#Use fuzzy (continuous) values from proportion by categories: predict using a method..e.g. NN,knn etc.
+#Use reclassify layers by cat using multi-label algorithm
+#
+#PART3
+#Compare results
+#
 ###Loading R library and packages                                                      
 
 library(raster)                 # loading the raster package
@@ -61,6 +75,8 @@ load_obj <- function(f){
   nm <- load(f, env)[1]
   env[[nm]]
 }
+#add reclassify function..
+#add aggregate function
 
 #####  Parameters and argument set up ###########
 
@@ -108,8 +124,8 @@ raster1998 <- raster(LU1998)
 
 plot(raster1978)
 plot(raster1998)
-
-data_matrix1978 <- rasterToPoints(raster1978)
+plot(stack(raster1978,raster1998))
+data_matrix1978 <- rasterToPoints(raster1978) #this step is not necessary...
 head(data_matrix1978)
 
 data_matrix1998 <- rasterToPoints(raster1998)
@@ -124,14 +140,19 @@ freq(raster1998)#
 #[2,]     1  21621 #urban
 #[3,]    NA  78260
 
+#this computes the number of 1 in 5x5 pixels
 r.agg_78 <- aggregate(raster1978, fact=5, fun=sum, na.rm=TRUE) # 10
 
 r.agg_98 <- aggregate(raster1998, fact=5, fun=sum, na.rm=TRUE) #so if 25 then 100% urban, 
 #could use mean!!
 r_agg_98_perc <- aggregate(raster1998, fact=5, fun=mean, na.rm=TRUE)*100 #so 100% urban, 
+r_agg_78_perc <- aggregate(raster1978, fact=5, fun=mean, na.rm=TRUE)*100 #so 100% urban, 
 
 plot(r.agg_78)
 plot(r.agg_98)
+plot(r_agg_98_perc)
+plot(r_agg_78_perc)
+
 histogram(r.agg_98)
 histogram(raster1998)
 
@@ -146,14 +167,17 @@ r78 = data.agg_78; #make a copy?
 r98 = data.agg_98;
 
 ### Reclassify data, column 3 is the landuse final
-#if 25 then all the pixels are of hte same class other not (ML)
+#if 25 then all the pixels are of the same class other not (ML)
 #this should be done directly in the raster package classify function
 
+#--> reclassify mixed pixels into mixed and unmixed (mono and multi) for date 78
 for (i in 1:nrow(data.agg_78)){
-if ( (data.agg_78[i,3]!=0) && (data.agg_78[i,3]!=25) ) # ML 
-r78[i,3] = 2 # it means mixed class ok
+  if ( (data.agg_78[i,3]!=0) && (data.agg_78[i,3]!=25) ){
+    r78[i,3] = 2 # it means mixed class ok
+  } # ML 
 }
 
+#--> reclassify mixed pixels into mixed and unmixed (mono and multi) for date 98
 for (i in 1:nrow(data.agg_98)){
 if ( (data.agg_98[i,3]!=0) && (data.agg_98[i,3]!=25) ) # ML 
 r98[i,3] = 2
@@ -171,13 +195,36 @@ if (r98[i,3]==25) # Urban
 r98[i,3] = 1
 }
 
+#Reclassification using raster!!
+#2: urban and non urban mixed
+#1: urban
+#0: non urban
+
+recmat_val <- c(-1, 0, 0,  
+                0, 99, 2,  
+                99, 100, 1)
+rclmat <- matrix(recmat_val, ncol=3, byrow=TRUE)
+r98_rec <- reclassify(r_agg_98_perc, rclmat)
+freq(r98_rec)
+col_pal <- c("grey","red","black")
+
+plot(r98_rec,col=col_pal,legend=F)
+cat_names <- c("non urban","ML","urban")
+legend("topright",legend=cat_names,title="Categories",
+       pt.cex=1,cex=1,fill=col_pal,bty="n")
+
 ### Bring it back to the raster format (use reclassify for all)
 rt1 <- rasterFromXYZ(r78)
 rt2 <- rasterFromXYZ(r98)
 
+#reclassify(dd)
+r_agg_98_perc <- aggregate(raster1998, fact=5, fun=mean, na.rm=TRUE)*100 #so 100% urban, 
+r_agg_78_perc <- aggregate(raster1978, fact=5, fun=mean, na.rm=TRUE)*100 #so 100% urban, 
+
+
 #Add legend
 plot(rt1)
-
+freq(rt1)
 histogram(rt1)
 writeRaster(rt1, "agg78_500meter.asc", overwrite=TRUE) #better not use asc !!! not standard file 
 writeRaster(rt2, "agg98_500meter.asc", overwrite=TRUE) #note that the coordinate system is not assigned!!!
@@ -186,6 +233,12 @@ LU = cbind(r78, r98[,3]) # NU(0), U(2), ML(2), recreate a matrix object, use dat
 colnames(LU) = c("X", "Y", "LU78", "class") # class refer to LU98, maybe use year instead of class?
 #LU[1:5,]
 head(LU)
+LU_df <- as.data.frame(LU)
+table(LU_df$class)
+#> table(LU_df$class)
+#
+#0    1    2 
+#3190  168 2224 
 
 #### GENERATE ML land use DATA
 
@@ -199,8 +252,10 @@ dim(data_matrix1978)
 
 table(data_matrix[,3])
 #0      1 
+
 #117012  19608 
 
+################Not clear what is happening here...
 ##### Use reclassifying function
 ### for the year 1978
 data.agg_78_NOT_ML_equal4 = data.agg_78[data.agg_78[,3]== 0,]  
@@ -312,8 +367,7 @@ dt1_NU = data.agg_78[data.agg_78[,3]==0,]
 dt1_U = data.agg_78[data.agg_78[,3]==25,]
 
 dt2ML = data.agg_98[(data.agg_98[,3]!=0) & (data.agg_98[,3]!=25),]
-dt2_NU = data.     0      1 
-117012  19608 agg_98[data.agg_98[,3]==0,]
+#dt2_NU = data.     0      1 117012  19608 agg_98[data.agg_98[,3]==0,]
 dt2_U = data.agg_98[data.agg_98[,3]==25,]
 
 dt1_U[,3]=2
@@ -345,8 +399,9 @@ mat = rbind(c(1, 1, 1, 1, 1, 2, 4, 6, 7),
 ### aggregation using mono-label class assignment (by max function)
 
 InRas <- raster(mat) 
-writeRaster(InRas, "InRas.asc")
-
+writeRaster(InRas, file=file.path(out_dir,"InRas.rst"),overwrite=T)
+plot(InRas)
+freq(InRas)
 OutRas_mono_label <- aggregate(InRas, fact=3, fun=max, na.rm=TRUE)
 OutRas_mono_label.agg <- rasterToPoints(OutRas_mono_label)
 head(OutRas_mono_label.agg)
@@ -358,7 +413,7 @@ writeRaster(OutRas_ml, "OutRas_mono_label.asc", overwrite=TRUE)
 
 OutRas_multi_label <- aggregate(InRas, fact=3, fun=minmax, na.rm=TRUE)
 OutRas_multi_label.agg <- rasterToPoints(OutRas_ML)
-head(OutRas_multi_label.agg)
+head(OutRas_multi_l#--> reclassify mixed pixels into mixed and unmixed (mono and multi)abel.agg)
 
 writeRaster(OutRas_multi_label, "OutRas_multi_label.asc", overwrite=TRUE)
 
@@ -410,7 +465,7 @@ head(data.agg_raster_dist_roads)
 
 data.agg_raster_dist_rvrs <- rasterToPoints(agg_raster_dist_rvrs)
 head(data.agg_raster_dist_rvrs)
-
+N Population Division
 data.agg_raster_dist_urb78 <- rasterToPoints(agg_raster_dist_urb78)
 head(data.agg_raster_dist_urb78)
 
