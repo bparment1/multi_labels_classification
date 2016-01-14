@@ -98,13 +98,14 @@ create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
 
 #Function to aggregate from fine to coarse resolution, this will change accordingly once the input raster ref is given..
 #
-aggregate_raster <- function(reg_ref_rast,agg_fact,r_in,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL){
+aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL){
   #Aggregate raster from raster input and reference file
   #INPUT arguments:
   #agg_fact: factor to aggregate
   #agg_fun: default is mean
   #out_suffix: output suffix
   #file_Format: raster format used e.g. .tif
+  #reg_ref_rast: reference raster to match in resolution, if NULL then send a message
   #out_dir: output directory
   #OUTPUT:
   # raster_name: name of the file containing the aggregated raster
