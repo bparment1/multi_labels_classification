@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 01/14/2016
+#DATE MODIFIED: 05/07/2016
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -50,7 +50,7 @@ library(rgeos)                  # spatial analysis, topological and geometric op
 
 ###### Functions used in this script sourced from other files
 
-function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_01142016.R" #PARAM 1
+function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_05072016.R" #PARAM 1
 script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
 
@@ -96,7 +96,7 @@ r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resol
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"multilabel_01142016" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"multilabel_05072016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
 
@@ -113,7 +113,7 @@ agg_fact <- 5
 #Create output directory
 
 #out_dir <- in_dir #output will be created in the input dir
-out_suffix_s <- out_suffix #can modify name of output suffix
+out_suffix_s <- out_suffix #Can modify name of output suffix
 if(create_out_dir_param==TRUE){
   out_dir <- create_dir_fun(out_dir,out_suffix_s)
   setwd(out_dir)
@@ -130,29 +130,41 @@ plot(r_date1,main=paste("Date 2: ",date2,sep=""))
 plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
 
 r_stack <- stack(r_date1,r_date2,r_date3)
-names(r_stack) <- paste("T_",1:3,sep="")
+names(r_stack) <- as.character(c(date1,date2,date3))
 plot(r_stack)
 
-freq(r_date2)
+freq_tb2 <- freq(r_date2) #zero is NA?
+freq_tb2 <- freq(r_date2) #zero is NA?
+## create a table of each cat per date:
+freq_tb <- freq(r_stack,merge=T)
+write.table(freq_tb,file = paste0("classes_freq_table_",out_suffix,".txt",sep=""))
+dim(r_date2)
 
 #### PART 1: Processing data: generate multi-label #####################
 
-## Breakout layers
-r_date_layerized <- layerize(r_date1,
-                             file=paste("r_layerized_bool_",names(r_date1),"_",out_suffix,file_format,sep=""),
-                             overwrite=T)
-inMemory(r_date_layerized)
-filename(r_date_layerized)
+generate_soft_cat_aggregated_raster_fun <- function(i,lf,NA_flag_val,file_format,out_dir,out_suffix){
 
-## Aggregate
-
-r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
-                 r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
-r_agg <- brick(r_agg_fname)
-
-#apply function by layer using lapply.
-
-## Reclassify by labels
+  ## Breakout layers
+  r_date_layerized <- layerize(r_date1,
+                               file=paste("r_layerized_bool_",names(r_date1),"_",out_suffix,file_format,sep=""),
+                               overwrite=T)
+  inMemory(r_date_layerized)
+  filename(r_date_layerized)
+  
+  ## Aggregate
+  
+  ##To do
+  ##Set correct names based on categories of input
+  ##Set output name
+  r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
+                                 r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
+  r_agg <- brick(r_agg_fname)
+  
+  #apply function by layer using lapply.
+  
+  ## Reclassify by labels
+  
+}
 
 #Reclassification using raster!!
 #2: urban and non urban mixed
