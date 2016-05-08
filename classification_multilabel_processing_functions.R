@@ -5,7 +5,7 @@
 #
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 01/14/2016
+#DATE MODIFIED: 05/09/2016
 #Version: 1
 #PROJECT: Multilabel and fuzzy experiment            
 

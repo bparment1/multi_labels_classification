@@ -93,13 +93,16 @@ r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resol
 r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1999_landuse.rst"
 r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_2005_landuse.rst"
 
+data_type <- "Int32"
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
 out_suffix <-"multilabel_05072016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
-
+#agg_param <- 5
+agg_fun <- "mean" 
+  
 date1 <- 1971
 date2 <- 1999
 date3 <- 2005
@@ -125,6 +128,8 @@ r_date1 <- raster(r_date1_fname)
 r_date2 <- raster(r_date2_fname) 
 r_date3 <- raster(r_date3_fname) 
   
+lf <- c(r_date1_fname,r_date2_fname,r_date3_fname)
+
 plot(r_date1,main=paste("Date 1: ",date1,sep="")) 
 plot(r_date1,main=paste("Date 2: ",date2,sep="")) 
 plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
@@ -142,20 +147,58 @@ dim(r_date2)
 
 #### PART 1: Processing data: generate multi-label #####################
 
-generate_soft_cat_aggregated_raster_fun <- function(i,lf,NA_flag_val,file_format,out_dir,out_suffix){
-
+##This function assumes that NA values are set...
+## Makes this function use majority rules too?
+debug(generate_soft_cat_aggregated_raster_fun)
+test <- generate_soft_cat_aggregated_raster_fun(lf[1],reg_ref_rast=NULL,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix)
+  
+generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
+  
+  #lf <- list_param$lf
+  #raster_name <- lf[i] #list of raster ot project and crop, this is a list!!
+  #reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
+  #out_rast_name <- list_param$out_rast_name[j] #if NULL then use out_suffix to add to output name
+  #agg_param <- list_param$agg_param #TRUE,agg_fact,agg_fun
+  #file_format <- list_param$file_format #.tif, .rst
+  #NA_flag_val <- list_param$NA_flag_val #flag value used for no data
+  #input_proj_str <- list_param$input_proj_str #default null?
+  #out_suffix <- list_param$out_suffix
+  #out_dir <- list_param$out_dir
+  
+  ##### STEP 1: Check input
+  
+  if(class(r)!="RasterLayer"){
+    r <- raster(r)
+  }
+  
+  NAvalue(r) <- NA_flag_val #make sure we have a flag value assigned
+  
+  ###### STEP 1: BREAK OUT
   ## Breakout layers
-  r_date_layerized <- layerize(r_date1,
-                               file=paste("r_layerized_bool_",names(r_date1),"_",out_suffix,file_format,sep=""),
-                               overwrite=T)
-  inMemory(r_date_layerized)
-  filename(r_date_layerized)
+  
+  freq_tb <- as.data.frame(freq(r)) #zero is NA?
+  ## get the names
+  names_val <- freq_tb$value
+  names_val <- names_val[!is.na(names_val)] #remove NA
+  
+  out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
+  
+  list_out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
+  #r_layerized <- layerize(r,file= out_raster_name,overwrite=T)
+  #r_layerized <- layerize(r,classes=names_val,bylayer=T,filename= out_raster_name,overwrite=T)
+  #r_layerized <- layerize(r,classes=names_val,filename= out_raster_name,overwrite=T)
+  r_layerized <- layerize(r,classes=names_val,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
+  writeRaster(r_layerized,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
+  
+  #inMemory(r_date_layerized)
+  #filename(r_date_layerized)
   
   ## Aggregate
   
   ##To do
   ##Set correct names based on categories of input
   ##Set output name
+  
   r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
                                  r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
   r_agg <- brick(r_agg_fname)
@@ -163,7 +206,7 @@ generate_soft_cat_aggregated_raster_fun <- function(i,lf,NA_flag_val,file_format
   #apply function by layer using lapply.
   
   ## Reclassify by labels
-  
+  return(raster_outname)
 }
 
 #Reclassification using raster!!
@@ -181,6 +224,9 @@ generate_soft_cat_aggregated_raster_fun <- function(i,lf,NA_flag_val,file_format
 
 #### PART 2: Modeling ###########################
 
+## First do predction using hard classified maps using neural net and logistic??
+
+## Second do prediction using soft classifified maps,proportions?
 
 #### PART 3: Assessment ########################
 
