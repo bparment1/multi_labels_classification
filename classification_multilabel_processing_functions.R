@@ -278,5 +278,62 @@ plot_to_file <- function(raster_name,res_pix=480,out_suffix=NULL,out_dir=NULL){
   return(png_file)
 }
 
+generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
+  
+  #lf <- list_param$lf
+  #raster_name <- lf[i] #list of raster ot project and crop, this is a list!!
+  #reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
+  #out_rast_name <- list_param$out_rast_name[j] #if NULL then use out_suffix to add to output name
+  #agg_param <- list_param$agg_param #TRUE,agg_fact,agg_fun
+  #file_format <- list_param$file_format #.tif, .rst
+  #NA_flag_val <- list_param$NA_flag_val #flag value used for no data
+  #input_proj_str <- list_param$input_proj_str #default null?
+  #out_suffix <- list_param$out_suffix
+  #out_dir <- list_param$out_dir
+  
+  ##### STEP 1: Check input
+  
+  if(class(r)!="RasterLayer"){
+    r <- raster(r)
+  }
+  
+  NAvalue(r) <- NA_flag_val #make sure we have a flag value assigned
+  
+  ###### STEP 1: BREAK OUT
+  ## Breakout layers
+  
+  freq_tb <- as.data.frame(freq(r)) #zero is NA?
+  ## get the names
+  names_val <- freq_tb$value
+  names_val <- names_val[!is.na(names_val)] #remove NA
+  
+  out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
+  
+  list_out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
+  #r_layerized <- layerize(r,file= out_raster_name,overwrite=T)
+  #r_layerized <- layerize(r,classes=names_val,bylayer=T,filename= out_raster_name,overwrite=T)
+  #r_layerized <- layerize(r,classes=names_val,filename= out_raster_name,overwrite=T)
+  r_layerized <- layerize(r,classes=names_val,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
+  writeRaster(r_layerized,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
+  
+  #inMemory(r_date_layerized)
+  #filename(r_date_layerized)
+  
+  ## Aggregate
+  
+  ##To do
+  ##Set correct names based on categories of input
+  ##Set output name
+  
+  r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
+                                 r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
+  r_agg <- brick(r_agg_fname)
+  
+  #apply function by layer using lapply.
+  
+  ## Reclassify by labels
+  return(raster_outname)
+}
+
 
 ############################### END OF SCRIPT ########################
