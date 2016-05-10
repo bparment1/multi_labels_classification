@@ -98,21 +98,23 @@ create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
 
 #Function to aggregate from fine to coarse resolution, this will change accordingly once the input raster ref is given..
 #
-aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL){
+aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL,out_rast_name=NULL){
   #Aggregate raster from raster input and reference file
   #INPUT arguments:
-  #agg_fact: factor to aggregate
-  #agg_fun: default is mean
-  #out_suffix: output suffix
-  #file_Format: raster format used e.g. .tif
-  #reg_ref_rast: reference raster to match in resolution, if NULL then send a message
-  #out_dir: output directory
+  #1) agg_fact: factor to aggregate
+  #2) r_in: input raster layer
+  #3) reg_ref_rast: reference raster to match in resolution, if NULL then send a message
+  #4) agg_fun: default is mean
+  #5) out_suffix: output suffix
+  #6) file_Format: raster format used e.g. .tif
+  #7) out_dir: output directory
+  #8) out_rast_name: output raster name if null it is created from the input file name
   #OUTPUT:
-  # raster_name: name of the file containing the aggregated raster
+  # out_raster_name: name of the file containing the aggregated raster
   #
   # Authors: Benoit Parmentier
   # Created: 10/15/2015
-  # Modified: 11/01/2015
+  # Modified: 05/10/2016
   # To Do: 
   # - Add option to disaggregate
   #
@@ -134,10 +136,18 @@ aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_
     out_dir <- "."
   }
   
-  raster_name <- file.path(out_dir,paste("r_agg_",agg_fact,out_suffix,file_format,sep="")) #output name for aster file
-  r_agg <- aggregate(r_in, fact=agg_fact,FUN=agg_fun,filename=raster_name,overwrite=TRUE)
+  ## Create output raster name if out_rast_name is null
+  if(is.null(out_rast_name)){
+    raster_name <- filename(r_in)
+    extension_str <- extension(raster_name)
+    raster_name_tmp <- gsub(extension_str,"",basename(raster_name))
+    out_rast_name <- file.path(out_dir,paste("agg_",agg_fact,"_",raster_name_tmp,out_suffix,file_format,sep="")) #output name for aster file
+    #out_rast_name <- raster_name #for use in function later...
+  }
+
+  r_agg <- aggregate(r_in, fact=agg_fact,FUN=agg_fun,filename=out_rast_name,overwrite=TRUE)
   
-  return(raster_name)
+  return(out_rast_name)
   
 }
 
@@ -308,26 +318,57 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   names_val <- names_val[!is.na(names_val)] #remove NA
   
   out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
+  #out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
   
   list_out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
   #r_layerized <- layerize(r,file= out_raster_name,overwrite=T)
   #r_layerized <- layerize(r,classes=names_val,bylayer=T,filename= out_raster_name,overwrite=T)
   #r_layerized <- layerize(r,classes=names_val,filename= out_raster_name,overwrite=T)
-  r_layerized <- layerize(r,classes=names_val,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
-  writeRaster(r_layerized,bylayer=T,suffix=names_val,filename= out_raster_name,overwrite=T)
+  #r_layerized <- layerize(r,
+  #                        classes=names_val,
+  #                        filename= file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
+  #                        ,overwrite=T)
   
+  r_layerized <- layerize(r,
+                          classes=names_val,
+                          filename= out_raster_name,
+                          overwrite=T)
+  
+  writeRaster(r_layerized,
+              bylayer=T,
+              suffix=paste0(names_val,"_",out_suffix),
+              filename=paste("r_layerized_bool",file_format,sep="")
+              ,overwrite=T)
+  #plot(r_layerized)
+  #list.files(r_layerized_bool_multilabel_05072016_1.tif
+  #list.files()
+  lf_layerized_bool <- paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep="")
+  #names(r_layerized) <- 
   #inMemory(r_date_layerized)
   #filename(r_date_layerized)
+  #r_test <- raster(lf_layerized_bool[1])
   
+  ### STEP 2: aggregate
   ## Aggregate
   
   ##To do
   ##Set correct names based on categories of input
   ##Set output name
   
+  #r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
+  #                               r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
+  debug(aggregate_raster)
   r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
-                                 r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
-  r_agg <- brick(r_agg_fname)
+                                 r_in=raster(lf_layerized_bool[1]),
+                                 reg_ref_rast=NULL,
+                                 #agg_fun="mean",
+                                 agg_fun=agg_fun,
+                                 out_suffix=NULL,
+                                 file_format=file_format,
+                                 out_dir=out_dir,
+                                 out_rast_name = NULL)
+  
+  #r_agg <- brick(r_agg_fname)
   
   #apply function by layer using lapply.
   
