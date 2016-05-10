@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/07/2016
+#DATE MODIFIED: 05/09/2016
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -47,10 +47,12 @@ library(colorRamps)             # contains matlab.like palette
 library(zoo)                    # time series objects and methods
 library(maptools)               #
 library(rgeos)                  # spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+library(parallel)               # mclapply with cores...
 
 ###### Functions used in this script sourced from other files
 
-function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_05072016.R" #PARAM 1
+function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_05102016.R" #PARAM 1
+#classification_multilabel_processing_functions_05102016.R
 script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
 
@@ -149,28 +151,21 @@ dim(r_date2)
 
 ##This function assumes that NA values are set...
 ## Makes this function use majority rules too?
-debug(generate_soft_cat_aggregated_raster_fun)
-test <- generate_soft_cat_aggregated_raster_fun(lf[1],reg_ref_rast=NULL,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix)
+#debug(generate_soft_cat_aggregated_raster_fun)
+test <- generate_soft_cat_aggregated_raster_fun(lf[1],reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix)
   
+r_1971_agg5_soft <- stack(test)
+plot(r_1971_agg5_soft)
 
-#Reclassification using raster!!
-#2: urban and non urban mixed
-#1: urban
-#0: non urban
-# USE SUBS rather than reclassify?
-#recmat_val <- c(-1, 0, 0,  
-#                0, 99, 2,  
-#                99, 100, 1)
-#rclmat <- matrix(recmat_val, ncol=3, byrow=TRUE)
-#r98_rec <- reclassify(r_agg_98_perc, rclmat)
-#freq(r98_rec)
-#col_pal <- c("grey","red","black")
-
+#generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
+  
 #### PART 2: Modeling ###########################
 
 ## First do predction using hard classified maps using neural net and logistic??
 
 ## Second do prediction using soft classifified maps,proportions?
+
+##Needs to select validation/testing and training!!
 
 #### PART 3: Assessment ########################
 
