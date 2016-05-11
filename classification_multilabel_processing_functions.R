@@ -5,7 +5,7 @@
 #
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/09/2016
+#DATE MODIFIED: 05/10/2016
 #Version: 1
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -39,6 +39,7 @@ library(colorRamps)             # contains matlab.like palette
 library(zoo)                    # time series objects and methods
 library(maptools)               #
 library(rgeos)                  # spatial analysis, topological and geometric operations e.g. interesect, union, contain etc.
+library(parallel)               # mclapply with cores...
 
 ###### Functions used in this script sourced from other files
 
@@ -98,11 +99,11 @@ create_polygon_from_extent<-function(reg_ref_rast,outDir=NULL,outSuffix=NULL){
 
 #Function to aggregate from fine to coarse resolution, this will change accordingly once the input raster ref is given..
 #
-aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL,out_rast_name=NULL){
+aggregate_raster <- function(r_in, agg_fact, reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL,out_rast_name=NULL){
   #Aggregate raster from raster input and reference file
   #INPUT arguments:
-  #1) agg_fact: factor to aggregate
-  #2) r_in: input raster layer
+  #1) r_in: input raster layer
+  #2) agg_fact: factor to aggregate
   #3) reg_ref_rast: reference raster to match in resolution, if NULL then send a message
   #4) agg_fun: default is mean
   #5) out_suffix: output suffix
@@ -119,6 +120,11 @@ aggregate_raster <- function(agg_fact,r_in,reg_ref_rast=NULL,agg_fun="mean",out_
   # - Add option to disaggregate
   #
   ################################
+  
+  ##If file is provided rather than RasterLayer
+  if(class(r_in)!="RasterLayer"){
+    r_in <- raster(r_in)
+  }
   
   if(is.null(agg_fact)){
     res_ref <- res(reg_ref_rast)[1] #assumes square cells, and decimal degrees from WGS84 for now...
@@ -220,13 +226,14 @@ create__m_raster_region <-function(j,list_param){
     agg_fact <- as.numeric(agg_param[2]) #in case we have a string/char type
     agg_fun <- agg_param[3]
     #debug(aggregate_raster)
-    r_agg_raster_name <- aggregate_raster(reg_ref_rast, #reference raster with the desired resolution
+    r_agg_raster_name <- aggregate_raster(r_in=layer_crop_rast, #raster to be aggregated
+                                          reg_ref_rast, #reference raster with the desired resolution
                                           agg_fact=agg_fact, #given aggregation factor
-                                          r_in=layer_crop_rast, #raster to be aggregated
                                           agg_fun="mean", #aggregation function
                                           out_suffix=out_suffix,
                                           file_format=".tif",
-                                          out_dir=out_dir)
+                                          out_dir=out_dir,
+                                          out_rast_name = NULL)
     layer_crop_rast <- raster(r_agg_raster_name)
   }
   
@@ -288,7 +295,7 @@ plot_to_file <- function(raster_name,res_pix=480,out_suffix=NULL,out_dir=NULL){
   return(png_file)
 }
 
-generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
+generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,num_cores,NA_flag_val,file_format,out_dir,out_suffix){
   
   #lf <- list_param$lf
   #raster_name <- lf[i] #list of raster ot project and crop, this is a list!!
@@ -357,19 +364,33 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   
   #r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
   #                               r_in=r_date_layerized,reg_ref_rast=NULL,agg_fun="mean",out_suffix=NULL,file_format=".tif",out_dir=NULL)
-  debug(aggregate_raster)
-  r_agg_fname <-aggregate_raster(agg_fact=agg_fact,
-                                 r_in=raster(lf_layerized_bool[1]),
-                                 reg_ref_rast=NULL,
-                                 #agg_fun="mean",
-                                 agg_fun=agg_fun,
-                                 out_suffix=NULL,
-                                 file_format=file_format,
-                                 out_dir=out_dir,
-                                 out_rast_name = NULL)
+  #debug(aggregate_raster)
+  #r_agg_fname <-aggregate_raster(r_in=raster(lf_layerized_bool[1]),
+  #                               agg_fact=agg_fact,
+  #                               reg_ref_rast=NULL,
+  #                               #agg_fun="mean",
+  #                               agg_fun=agg_fun,
+  #                               out_suffix=NULL,
+  #                               file_format=file_format,
+  #                               out_dir=out_dir,
+  #                               out_rast_name = NULL)
+  #r_var_s <- mclapply(1:length(infile_var),FUN=import_list_modis_layers_fun,list_param=list_param_import_modis,mc.preschedule=FALSE,mc.cores = num_cores) #This is the end bracket from mclapply(...) statement
   
-  #r_agg <- brick(r_agg_fname)
-  
+  lf_agg <- mclapply(lf_layerized_bool,
+                     FUN=aggregate_raster,
+                     #r_in=raster(lf_layerized_bool[1]),
+                     agg_fact=agg_fact,
+                     reg_ref_rast=NULL,
+                     #agg_fun="mean",
+                     agg_fun=agg_fun,
+                     out_suffix=NULL,
+                     file_format=file_format,
+                     out_dir=out_dir,
+                     out_rast_name = NULL,
+                     mc.preschedule=FALSE,
+                     mc.cores = num_cores) 
+  #r_agg <- stack(unlist(lf_agg))
+  raster_outname <- unlist(lf_agg)
   #apply function by layer using lapply.
   
   ## Reclassify by labels
