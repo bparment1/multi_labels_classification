@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/09/2016
+#DATE MODIFIED: 05/10/2016
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -83,9 +83,9 @@ load_obj <- function(f){
 #####  Parameters and argument set up ###########
 
 #in_dir <- "/home/bparmentier/Google Drive/LISER_Lux/Hichem" #local bpy50
-in_dir <- "~/Google Drive/LISER_Lux/Data-USA-with1m-resolution" #local bpy50, MA data
+in_dir <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution" #local bpy50, MA data
 #in_dir <- "//crc/profiles/RedirectFolders/hichem/Desktop/LISER/papers/Fuzzy CA/raster-USA/Hichem"#LISER
-out_dir <- "~/Google Drive/LISER_Lux/"
+out_dir <- "/home/bparmentier/Google Drive/LISER_Lux/"
 CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
 proj_str<- CRS_WGS84 
@@ -152,14 +152,32 @@ dim(r_date2)
 ##This function assumes that NA values are set...
 ## Makes this function use majority rules too?
 #debug(generate_soft_cat_aggregated_raster_fun)
-test <- generate_soft_cat_aggregated_raster_fun(lf[1],reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix)
+#test <- generate_soft_cat_aggregated_raster_fun(lf[1],reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix)
   
-r_1971_agg5_soft <- stack(test)
-plot(r_1971_agg5_soft)
+#r_1971_agg5_soft <- stack(test)
+#plot(r_1971_agg5_soft)
+
+list_lf_agg_soft <- vector("list",length=length(lf)) 
+
+###
+for(i in 1:length(lf)){
+
+  raster_name <- lf[i]
+  extension_str <- extension(raster_name)
+  raster_name_tmp <- gsub(extension_str,"",basename(raster_name))
+  #out_rast_name <- file.path(out_dir,paste("agg_",agg_fact,"_",raster_name_tmp,out_suffix,file_format,sep="")) #output name for aster file
+  
+  out_suffix_s <- paste0(raster_name_tmp,"_" ,out_suffix)
+  lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix_s)
+  list_lf_agg_soft[[i]] <- lf_agg_soft
+}
+
 
 #generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
   
 #### PART 2: Modeling ###########################
+
+
 
 ## First do predction using hard classified maps using neural net and logistic??
 
