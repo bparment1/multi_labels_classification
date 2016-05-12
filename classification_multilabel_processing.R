@@ -4,7 +4,7 @@
 
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/10/2016
+#DATE MODIFIED: 05/11/2016
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -177,8 +177,13 @@ for(i in 1:length(lf)){
   
 #### PART 2: Modeling ###########################
 
+NA_flag_val_tmp <- 0
+NAvalue(r_stack) <- NA_flag_val_tmp
 
-
+test <- crosstab(subset(r_stack,1),subset(r_stack,2)) # 306x3
+test2 <- subset(test,test$Freq > 0) # 44x3
+                 
+## Let's say we want to focus on transition
 ## First do predction using hard classified maps using neural net and logistic??
 
 ## Second do prediction using soft classifified maps,proportions?
