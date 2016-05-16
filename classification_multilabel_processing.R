@@ -1,10 +1,14 @@
 ####################################  Multilabel and fuzzy classification  #######################################
 ###########################################  Processing and Analyses  #######################################
 #This script explores the fuzzy and multilabels concepts using classified land cover maps.
+#The script generates soft outputs from hard classified maps.
+#
+#
+#
 
-#AUTHORS: Hichem Omrani and Benoit Parmentier                                             
+#AUTHORS: Benoit Parmentier and Hichem Omrani                                            
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/11/2016
+#DATE MODIFIED: 05/17/2016
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -94,12 +98,14 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1971_landuse.rst"
 r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1999_landuse.rst"
 r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_2005_landuse.rst"
+mask_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_bound.rst"
+
 
 data_type <- "Int32"
 file_format <- ".tif" #PARAM5
 NA_value <- -9999 #PARAM6
 NA_flag_val <- NA_value #PARAM7
-out_suffix <-"multilabel_05072016" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"multilabel_05172016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
 #agg_param <- 5
@@ -110,6 +116,7 @@ date2 <- 1999
 date3 <- 2005
 
 agg_fact <- 5
+mask_image <- TRUE
 
 ################# START SCRIPT ###############################
 
@@ -129,15 +136,16 @@ if(create_out_dir_param==TRUE){
 r_date1 <- raster(r_date1_fname)
 r_date2 <- raster(r_date2_fname) 
 r_date3 <- raster(r_date3_fname) 
-  
+r_mask <- raster(mask_fname)
+
 lf <- c(r_date1_fname,r_date2_fname,r_date3_fname)
 
 plot(r_date1,main=paste("Date 1: ",date1,sep="")) 
 plot(r_date1,main=paste("Date 2: ",date2,sep="")) 
 plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
 
-r_stack <- stack(r_date1,r_date2,r_date3)
-names(r_stack) <- as.character(c(date1,date2,date3))
+r_stack <- stack(r_date1,r_date2,r_date3,r_mask)
+names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
 plot(r_stack)
 
 freq_tb2 <- freq(r_date2) #zero is NA?
@@ -146,6 +154,26 @@ freq_tb2 <- freq(r_date2) #zero is NA?
 freq_tb <- freq(r_stack,merge=T)
 write.table(freq_tb,file = paste0("classes_freq_table_",out_suffix,".txt",sep=""))
 dim(r_date2)
+
+#value   X1971   X1999   X2005    mask
+#1      0 8906646 8906646 8921927 8921927
+#2      1   21992    5239      NA 6761661
+
+### Mask if necessary:
+if(mask_image==T){
+  
+  names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
+  r_stack <- stack(lf)
+  r_stack_m <- mask(r_stack,r_mask,file="r_stack_m.tif")
+  names(r_stack_m)
+  
+  writeRaster(r_stack_m,filename="landuse.tif",bylayer=T,
+              suffix=paste(names(r_stack),"_masked",sep=""),format="GTiff")
+  
+  lf_masked <- list.files(path=out_dir,pattern=paste(".*.","_masked",sep=""))
+  lf <- lf_masked
+}
+
 
 #### PART 1: Processing data: generate multi-label #####################
 
@@ -182,9 +210,13 @@ NAvalue(r_stack) <- NA_flag_val_tmp
 
 test <- crosstab(subset(r_stack,1),subset(r_stack,2)) # 306x3
 test2 <- subset(test,test$Freq > 0) # 44x3
-                 
+       
+          
 ## Let's say we want to focus on transition
 ## First do predction using hard classified maps using neural net and logistic??
+
+#Let's use top 4 classes?
+
 
 ## Second do prediction using soft classifified maps,proportions?
 
