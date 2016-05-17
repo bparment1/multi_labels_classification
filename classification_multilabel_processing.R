@@ -117,6 +117,7 @@ agg_fun <- "mean"
 date1 <- 1971
 date2 <- 1999
 date3 <- 2005
+dates <- c(date1,date2,date3)
 
 agg_fact <- 5
 mask_image <- TRUE
@@ -199,8 +200,9 @@ dim(r_date2)
 #plot(r_1971_agg5_soft)
 
 list_lf_agg_soft <- vector("list",length=length(lf)) 
-
+list_df_agg_soft <- vector("list",length=length(lf))
 ###
+
 for(i in 1:length(lf)){
 
   raster_name <- lf[i]
@@ -211,12 +213,62 @@ for(i in 1:length(lf)){
   out_suffix_s <- paste0(raster_name_tmp,"_" ,out_suffix)
   lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix_s)
   list_lf_agg_soft[[i]] <- lf_agg_soft
+  
+  class_no <-  unlist(lapply(lf_agg_soft,FUN=function(x){unlist(strsplit(x,"_"))[9]}))
+  
+  df_tmp <- data.frame(class_no,dates[i],agg_fact,lf_agg_soft)
+  
+  names(df_tmp) <- c("class","date","agg_fact","file")
+  df_tmp$var <- paste0(df_tmp$class,"_",df_tmp$date)
+  write.table(df_tmp,file = paste0("df_",dates[i],".txt"),sep=",",row.names = F)
+  list_df_agg_soft[[i]] <- df_tmp
 }
 
 #generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
-  
+
+r_soft_date1 <- stack(list_lf_agg_soft[[1]])
+r_soft_date2 <- stack(list_lf_agg_soft[[2]])
+r_soft_date3 <- stack(list_lf_agg_soft[[3]])
+
+names(r_soft_date1) <- list_df_agg_soft[[1]]$var
+plot(r_soft_date1)
+#plot_to_file(r_soft_date1)
+
+r_soft <- stack(unlist(list_lf_agg_soft))
+df_agg_soft <- do.call(rbind,list_df_agg_soft)
+
+names(r_soft) <- df_agg_soft$var #53 layers!
+
+write.table(df_tmp,file = paste0("df_",dates[i],".txt"),sep=",",row.names = F)
+
+### Write out soft layers in a text format:
+r1 <- subset(r_soft,1)
+
+#r1 <-ref_rast
+xy <-coordinates(r1)  #get x and y projected coordinates...
+#CRS_interp<-proj4string(r1)
+#xy_latlon<-project(xy, CRS_interp, inv=TRUE) # find lat long for projected coordinats (or pixels...)
+r_x <-init(r1,v="x")
+r_y <-init(r1,v="y")
+#lon <- x
+#lat <-lon
+r_pix_ID <- r1
+r_pix_ID <- setValues(r_pix_ID,1:ncell(r_x)) #longitude for every pixel in the processing tile/region
+
+rm(r1)
+
+r_results <- stack(r_pix_ID,r_x,r_y,r_soft)
+names(r_results) <- c("pix_ID","x","y",names(r_soft))
+
+dat_out <- as.data.frame(r_results)
+dat_out <- na.omit(dat_out)
+names(dat_out)
+write.table(dat_out,file=paste("dat_out_","aggregation_",agg_fact,"_",out_suffix,".txt",sep=""),
+            row.names=F,sep=",",col.names=T)
+
 #### PART 2: Modeling ###########################
 
+#most important types are, 3,12 and 13
 #NAvalue(r_stack) <- NA_flag_val_tmp
 
 #test <- crosstab(subset(r_stack,1),subset(r_stack,2)) # 306x3
