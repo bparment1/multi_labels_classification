@@ -98,13 +98,16 @@ CRS_reg <- CRS_WGS84 # PARAM 4
 r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1971_landuse.rst"
 r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1999_landuse.rst"
 r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_2005_landuse.rst"
-mask_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_bound.rst"
-
+##This must be changed since the mask don't match!!!
+#mask_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_bound.rst"
+mask_fname <- NULL
 
 data_type <- "Int32"
 file_format <- ".tif" #PARAM5
-NA_value <- -9999 #PARAM6
+NA_value <- -9999 #PARAM6, desired flag val
 NA_flag_val <- NA_value #PARAM7
+NA_flag_mask_val <- 0 #input flag val 
+
 out_suffix <-"multilabel_05172016" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
@@ -144,35 +147,45 @@ plot(r_date1,main=paste("Date 1: ",date1,sep=""))
 plot(r_date1,main=paste("Date 2: ",date2,sep="")) 
 plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
 
-r_stack <- stack(r_date1,r_date2,r_date3,r_mask)
-names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
+r_stack <- stack(r_date1,r_date2,r_date3)#,r_mask)
+names(r_stack) <- as.character(c(date1,date2,date3))#,"mask"))
 plot(r_stack)
-
-freq_tb2 <- freq(r_date2) #zero is NA?
-freq_tb2 <- freq(r_date2) #zero is NA?
-## create a table of each cat per date:
-freq_tb <- freq(r_stack,merge=T)
-write.table(freq_tb,file = paste0("classes_freq_table_",out_suffix,".txt",sep=""))
-dim(r_date2)
-
-#value   X1971   X1999   X2005    mask
-#1      0 8906646 8906646 8921927 8921927
-#2      1   21992    5239      NA 6761661
 
 ### Mask if necessary:
 if(mask_image==T){
   
-  names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
+  if(is.null(mask_fname)){
+    
+    r1 <- r_date1 > 0 #can use overlay to be faster but fine for now
+    r2 <- r_date2 > 0
+    r3 <- r_date3 > 0
+    
+    r_sum <- r1 + r2 + r3
+    r_mask <- r_sum > 2
+  }
+  
+  #names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
   r_stack <- stack(lf)
-  r_stack_m <- mask(r_stack,r_mask,file="r_stack_m.tif")
+  r_stack_m <- mask(r_stack,r_mask,file="r_stack_m.tif",maskvalue=NA_flag_mask_val ,overwrite=T)
   names(r_stack_m)
   
   writeRaster(r_stack_m,filename="landuse.tif",bylayer=T,
-              suffix=paste(names(r_stack),"_masked",sep=""),format="GTiff")
+              suffix=paste(names(r_stack),"_masked",sep=""),format="GTiff",overwrite=T)
   
   lf_masked <- list.files(path=out_dir,pattern=paste(".*.","_masked",sep=""))
   lf <- lf_masked
 }
+
+freq_tb2 <- freq(r_date2) #zero is NA?
+freq_tb2 <- freq(r_date2) #zero is NA?
+## create a table of each cat per date:
+r_stack <- stack(lf)
+freq_tb <- freq(r_stack,merge=T)
+write.table(freq_tb,file = paste0("classes_freq_table_",out_suffix,".txt",sep=""))
+dim(r_date2)
+
+#23    38                              NA                              NA                           65547
+#24    NA                         8936382                         8936382                         8936382
 
 
 #### PART 1: Processing data: generate multi-label #####################
@@ -200,18 +213,15 @@ for(i in 1:length(lf)){
   list_lf_agg_soft[[i]] <- lf_agg_soft
 }
 
-
 #generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
   
 #### PART 2: Modeling ###########################
 
-NA_flag_val_tmp <- 0
-NAvalue(r_stack) <- NA_flag_val_tmp
+#NAvalue(r_stack) <- NA_flag_val_tmp
 
-test <- crosstab(subset(r_stack,1),subset(r_stack,2)) # 306x3
-test2 <- subset(test,test$Freq > 0) # 44x3
+#test <- crosstab(subset(r_stack,1),subset(r_stack,2)) # 306x3
+#test2 <- subset(test,test$Freq > 0) # 44x3
        
-          
 ## Let's say we want to focus on transition
 ## First do predction using hard classified maps using neural net and logistic??
 
