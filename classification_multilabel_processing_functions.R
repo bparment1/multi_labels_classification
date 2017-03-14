@@ -5,7 +5,7 @@
 #
 #AUTHORS: Hichem Omrani and Benoit Parmentier                                             
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/10/2016
+#DATE MODIFIED: 03/14/2017
 #Version: 1
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -296,17 +296,24 @@ plot_to_file <- function(raster_name,res_pix=480,out_suffix=NULL,out_dir=NULL){
 }
 
 generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,num_cores,NA_flag_val,file_format,out_dir,out_suffix){
+  ## Function to aggregate categories
   
-  #lf <- list_param$lf
-  #raster_name <- lf[i] #list of raster ot project and crop, this is a list!!
-  #reg_ref_rast <- list_param$reg_ref_rast #This must have a coordinate system defined!!
-  #out_rast_name <- list_param$out_rast_name[j] #if NULL then use out_suffix to add to output name
-  #agg_param <- list_param$agg_param #TRUE,agg_fact,agg_fun
-  #file_format <- list_param$file_format #.tif, .rst
-  #NA_flag_val <- list_param$NA_flag_val #flag value used for no data
-  #input_proj_str <- list_param$input_proj_str #default null?
-  #out_suffix <- list_param$out_suffix
-  #out_dir <- list_param$out_dir
+  ##INPUTS
+  #1) r: raster to aggregate and crop/project if necessary
+  #2) reg_ref_rast: reference raster, it must have a coordinate system defined
+  #3) agg_fact:
+  #4) agg_fun:
+  #5) num_cores: number of cores used in the parallel processsing
+  #6) NA_flag_val: flag value used for no data
+  #7) file_format: raster file format e.g. .tif, .rst
+  #8) out_dir: output directory
+  #9) out_suffix: output suffix added to files
+  #
+  #OUTPUTS
+  #
+  #
+  #
+  
   
   ##### STEP 1: Check input
   
@@ -317,38 +324,39 @@ generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_
   NAvalue(r) <- NA_flag_val #make sure we have a flag value assigned
   
   ###### STEP 1: BREAK OUT
-  ## Breakout layers
+  ## Breakout layers: separate categories in individual layers
   
   freq_tb <- as.data.frame(freq(r)) #zero is NA?
   ## get the names
   names_val <- freq_tb$value
   names_val <- names_val[!is.na(names_val)] #remove NA
-  
+
+  ## Make a brick composed of multiple layers: one layer per category (in one unique multiband file)
   out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
-  #out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",out_suffix,file_format,sep=""))
-  
-  list_out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
-  #r_layerized <- layerize(r,file= out_raster_name,overwrite=T)
-  #r_layerized <- layerize(r,classes=names_val,bylayer=T,filename= out_raster_name,overwrite=T)
-  #r_layerized <- layerize(r,classes=names_val,filename= out_raster_name,overwrite=T)
-  #r_layerized <- layerize(r,
-  #                        classes=names_val,
-  #                        filename= file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
-  #                        ,overwrite=T)
-  
   r_layerized <- layerize(r,
                           classes=names_val,
                           filename= out_raster_name,
                           overwrite=T)
+  list_out_raster_name <- file.path(out_dir,paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep=""))
+  
+  ## Now write out separate layers in one unique file (one per categories)
+  #notice some issue here, looping through
+  #for(i in 1:nlayers){
+  #  writeRaster(r_layerized,
+  #              bylayer=T,
+  #              suffix=paste0(names_val,"_",out_suffix),
+  #              filename=paste("r_layerized_bool",
+  #                             file_format,sep="")
+  #             ,overwrite=T)
+  #}
   
   writeRaster(r_layerized,
               bylayer=T,
               suffix=paste0(names_val,"_",out_suffix),
-              filename=paste("r_layerized_bool",file_format,sep="")
+              filename=paste("r_layerized_bool",
+                             file_format,sep="")
               ,overwrite=T)
-  #plot(r_layerized)
-  #list.files(r_layerized_bool_multilabel_05072016_1.tif
-  #list.files()
+
   lf_layerized_bool <- paste("r_layerized_bool_",names_val,"_",out_suffix,file_format,sep="")
   #names(r_layerized) <- 
   #inMemory(r_date_layerized)
