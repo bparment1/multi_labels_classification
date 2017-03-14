@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier and Hichem Omrani                                            
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 05/17/2016
+#DATE MODIFIED: 03/14/2017
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -55,7 +55,7 @@ library(parallel)               # mclapply with cores...
 
 ###### Functions used in this script sourced from other files
 
-function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_05102016.R" #PARAM 1
+function_multilabel_fuzzy_analyses <- "classification_multilabel_processing_functions_03142017.R" #PARAM 1
 #classification_multilabel_processing_functions_05102016.R
 script_path <- "/home/bparmentier/Google Drive/LISER_Lux/R_scripts" #path to script #PARAM 2
 source(file.path(script_path,function_multilabel_fuzzy_analyses)) #source all functions used in this script 1.
@@ -89,7 +89,7 @@ load_obj <- function(f){
 #in_dir <- "/home/bparmentier/Google Drive/LISER_Lux/Hichem" #local bpy50
 in_dir <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution" #local bpy50, MA data
 #in_dir <- "//crc/profiles/RedirectFolders/hichem/Desktop/LISER/papers/Fuzzy CA/raster-USA/Hichem"#LISER
-out_dir <- "/home/bparmentier/Google Drive/LISER_Lux/"
+out_dir <- "/home/bparmentier/Google Drive/LISER_Lux/outputs"
 CRS_interp <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84
 CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station coords WGS84 # CONST 2
 proj_str<- CRS_WGS84 
@@ -108,7 +108,7 @@ NA_value <- -9999 #PARAM6, desired flag val
 NA_flag_val <- NA_value #PARAM7
 NA_flag_mask_val <- 0 #input flag val 
 
-out_suffix <-"multilabel_05172016" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"multilabel_03142017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
 #agg_param <- 5
@@ -119,7 +119,7 @@ date2 <- 1999
 date3 <- 2005
 dates <- c(date1,date2,date3)
 
-agg_fact <- 5
+agg_fact <- 15 # to match to 30m
 mask_image <- TRUE
 
 ################# START SCRIPT ###############################
@@ -137,10 +137,10 @@ if(create_out_dir_param==TRUE){
   setwd(out_dir) #use previoulsy defined directory
 }
 
+### Read in land cover maps for three dates
 r_date1 <- raster(r_date1_fname)
 r_date2 <- raster(r_date2_fname) 
 r_date3 <- raster(r_date3_fname) 
-r_mask <- raster(mask_fname)
 
 lf <- c(r_date1_fname,r_date2_fname,r_date3_fname)
 
@@ -163,12 +163,14 @@ if(mask_image==T){
     
     r_sum <- r1 + r2 + r3
     r_mask <- r_sum > 2
+  }else{
+    r_mask <- raster(mask_fname)
   }
   
   #names(r_stack) <- as.character(c(date1,date2,date3,"mask"))
   r_stack <- stack(lf)
   r_stack_m <- mask(r_stack,r_mask,file="r_stack_m.tif",maskvalue=NA_flag_mask_val ,overwrite=T)
-  names(r_stack_m)
+  #names(r_stack_m)
   
   writeRaster(r_stack_m,filename="landuse.tif",bylayer=T,
               suffix=paste(names(r_stack),"_masked",sep=""),format="GTiff",overwrite=T)
@@ -178,12 +180,11 @@ if(mask_image==T){
 }
 
 freq_tb2 <- freq(r_date2) #zero is NA?
-freq_tb2 <- freq(r_date2) #zero is NA?
 ## create a table of each cat per date:
 r_stack <- stack(lf)
 freq_tb <- freq(r_stack,merge=T)
 write.table(freq_tb,file = paste0("classes_freq_table_",out_suffix,".txt",sep=""))
-dim(r_date2)
+#dim(r_date2)
 
 #23    38                              NA                              NA                           65547
 #24    NA                         8936382                         8936382                         8936382
@@ -199,7 +200,7 @@ dim(r_date2)
 #r_1971_agg5_soft <- stack(test)
 #plot(r_1971_agg5_soft)
 
-list_lf_agg_soft <- vector("list",length=length(lf)) 
+list_lf_agg_soft <- vector("list",length=length(lf))
 list_df_agg_soft <- vector("list",length=length(lf))
 ###
 
@@ -211,7 +212,16 @@ for(i in 1:length(lf)){
   #out_rast_name <- file.path(out_dir,paste("agg_",agg_fact,"_",raster_name_tmp,out_suffix,file_format,sep="")) #output name for aster file
   
   out_suffix_s <- paste0(raster_name_tmp,"_" ,out_suffix)
-  lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,reg_ref_rast=NULL,agg_fact,agg_fun,num_cores,NA_flag_val=0,file_format,out_dir,out_suffix_s)
+  #debug(generate_soft_cat_aggregated_raster_fun)
+  lf_agg_soft <- generate_soft_cat_aggregated_raster_fun(raster_name,
+                                                         reg_ref_rast=NULL,
+                                                         agg_fact,
+                                                         agg_fun,
+                                                         num_cores,
+                                                         NA_flag_val=0,
+                                                         file_format,
+                                                         out_dir,
+                                                         out_suffix_s)
   list_lf_agg_soft[[i]] <- lf_agg_soft
   
   class_no <-  unlist(lapply(lf_agg_soft,FUN=function(x){unlist(strsplit(x,"_"))[9]}))
@@ -236,10 +246,10 @@ plot(r_soft_date1)
 
 r_soft <- stack(unlist(list_lf_agg_soft))
 df_agg_soft <- do.call(rbind,list_df_agg_soft)
+write.table(df_agg_soft,file = paste0("df_agg_soft",".txt"),sep=",",row.names = F)
 
 names(r_soft) <- df_agg_soft$var #53 layers!
-
-write.table(df_tmp,file = paste0("df_",dates[i],".txt"),sep=",",row.names = F)
+#write.table(df_tmp,file = paste0("df_",dates[i],".txt"),sep=",",row.names = F)
 
 ### Write out soft layers in a text format:
 r1 <- subset(r_soft,1)
@@ -288,3 +298,7 @@ write.table(dat_out,file=paste("dat_out_","aggregation_",agg_fact,"_",out_suffix
 
 
 ############################### END OF SCRIPT ########################
+
+#
+#http://www.mass.gov/anf/research-and-tech/it-serv-and-support/application-serv/office-of-geographic-information-massgis/datalayers/lus2005.html
+#
