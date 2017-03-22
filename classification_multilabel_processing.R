@@ -8,7 +8,7 @@
 
 #AUTHORS: Benoit Parmentier and Hichem Omrani                                            
 #DATE CREATED: 11/03/2015 
-#DATE MODIFIED: 03/14/2017
+#DATE MODIFIED: 03/22/2017
 #Version: 2
 #PROJECT: Multilabel and fuzzy experiment            
 
@@ -95,9 +95,14 @@ CRS_WGS84 <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0" #Station c
 proj_str<- CRS_WGS84 
 CRS_reg <- CRS_WGS84 # PARAM 4
 
-r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1971_landuse.rst"
-r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1999_landuse.rst"
-r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_2005_landuse.rst"
+#r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1971_landuse.rst"
+#r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_1999_landuse.rst"
+#r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_2005_landuse.rst"
+
+r_date1_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Land_use_9_classes/71LUC.tif"
+r_date2_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Land_use_9_classes/99LUC.tif"
+#r_date3_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Land_use_9_classes/71LUC.tif"
+
 ##This must be changed since the mask don't match!!!
 #mask_fname <- "/home/bparmentier/Google Drive/LISER_Lux/Data-USA-with1m-resolution/lyn_bound.rst"
 mask_fname <- NULL
@@ -108,7 +113,7 @@ NA_value <- -9999 #PARAM6, desired flag val
 NA_flag_val <- NA_value #PARAM7
 NA_flag_mask_val <- 0 #input flag val 
 
-out_suffix <-"multilabel_03142017" #output suffix for the files and ouptu folder #PARAM 8
+out_suffix <-"multilabel_03222017" #output suffix for the files and ouptu folder #PARAM 8
 create_out_dir_param=TRUE #PARAM9
 num_cores <- 4 #PARAM 14
 #agg_param <- 5
@@ -140,16 +145,21 @@ if(create_out_dir_param==TRUE){
 ### Read in land cover maps for three dates
 r_date1 <- raster(r_date1_fname)
 r_date2 <- raster(r_date2_fname) 
-r_date3 <- raster(r_date3_fname) 
+#r_date3 <- raster(r_date3_fname) 
 
-lf <- c(r_date1_fname,r_date2_fname,r_date3_fname)
+#lf <- c(r_date1_fname,r_date2_fname,r_date3_fname)
+lf <- c(r_date1_fname,r_date2_fname)
 
 plot(r_date1,main=paste("Date 1: ",date1,sep="")) 
-plot(r_date1,main=paste("Date 2: ",date2,sep="")) 
-plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
+plot(r_date2,main=paste("Date 2: ",date2,sep="")) 
+#plot(r_date1,main=paste("Date 3: ",date3,sep="")) 
 
-r_stack <- stack(r_date1,r_date2,r_date3)#,r_mask)
-names(r_stack) <- as.character(c(date1,date2,date3))#,"mask"))
+#r_stack <- stack(r_date1,r_date2,r_date3)#,r_mask)
+r_stack <- stack(r_date1,r_date2) 
+
+#names(r_stack) <- as.character(c(date1,date2,date3))#,"mask"))
+names(r_stack) <- as.character(c(date1,date2))
+
 plot(r_stack)
 
 ### Mask if necessary:
@@ -157,12 +167,18 @@ if(mask_image==T){
   
   if(is.null(mask_fname)){
     
+    #r_rec <- r_stack > 0
     r1 <- r_date1 > 0 #can use overlay to be faster but fine for now
     r2 <- r_date2 > 0
-    r3 <- r_date3 > 0
+    #r3 <- r_date3 > 0 #will need to add the code
     
-    r_sum <- r1 + r2 + r3
-    r_mask <- r_sum > 2
+    #r_sum <- lapply(r_rec,sum)
+    #r_sum <- stackApply(r_rec,indices=c(1,1),fun=sum)
+
+    r_sum <- r1 + r2 #+ r3
+    #r_mask <- r_sum > 2
+    r_mask <- r_sum > 1
+    #NA
   }else{
     r_mask <- raster(mask_fname)
   }
@@ -175,7 +191,7 @@ if(mask_image==T){
   writeRaster(r_stack_m,filename="landuse.tif",bylayer=T,
               suffix=paste(names(r_stack),"_masked",sep=""),format="GTiff",overwrite=T)
   
-  lf_masked <- list.files(path=out_dir,pattern=paste(".*.","_masked",sep=""))
+  lf_masked <- list.files(path=out_dir,pattern=paste(".*.","_masked",".tif$",sep=""))
   lf <- lf_masked
 }
 
@@ -236,9 +252,10 @@ for(i in 1:length(lf)){
 
 #generate_soft_cat_aggregated_raster_fun <- function(r,reg_ref_rast,agg_fact,agg_fun,NA_flag_val,file_format,out_dir,out_suffix){
 
+#lapply(lf_agg_soft,sum)
 r_soft_date1 <- stack(list_lf_agg_soft[[1]])
 r_soft_date2 <- stack(list_lf_agg_soft[[2]])
-r_soft_date3 <- stack(list_lf_agg_soft[[3]])
+#r_soft_date3 <- stack(list_lf_agg_soft[[3]])
 
 names(r_soft_date1) <- list_df_agg_soft[[1]]$var
 plot(r_soft_date1)
